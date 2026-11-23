@@ -8,7 +8,7 @@ from ddgs import DDGS
 from icrawler.builtin import BingImageCrawler
 
 from normalizer import normalize_product
-from verifier import verify_candidate
+from verifier import score_metadata, verify_candidate
 
 log=logging.getLogger("gc.search")
 MEDIA_DIR=Path(os.getenv("GC_MEDIA_DIR",Path(__file__).parent/"data"/"media"))
@@ -50,6 +50,7 @@ def _candidate(item:dict,query:str,tier:int)->dict|None:
     return {
         "image":image,"thumbnail":str(item.get("thumbnail") or image),
         "title":str(item.get("title") or ""),
+        "alt":str(item.get("alt") or item.get("title") or ""),
         "url":str(item.get("url") or ""),
         "source":str(item.get("source") or "DuckDuckGo Images"),
         "query":query,"tier":tier
@@ -100,17 +101,17 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
                 if candidate: candidate_map[candidate["image"]]=candidate
         except Exception as exc:
             query_errors.append(f"tier {tier}: {type(exc).__name__}")
-        # Verify the growing candidate pool after each tier. Vision only checks the top 8.
+        # Cheap metadata pre-score first; download/OCR/vision only the top 8.
         prelim=[]
         for candidate in candidate_map.values():
-            check=verify_candidate(product,candidate,seen_hashes=[],run_vision=False)
-            if not check.rejected:
-                prelim.append((check.score,candidate,check))
+            meta_score,meta_reasons,conflicts=score_metadata(product,candidate)
+            if meta_score>=50:
+                prelim.append((meta_score,candidate))
             else:
-                rejected.append({"candidate":candidate,"reasons":check.reasons})
+                rejected.append({"candidate":candidate,"reasons":meta_reasons+["rejected: metadata score below 50"]})
         shortlist=sorted(prelim,key=lambda x:x[0],reverse=True)[:8]
         verified=[]; review=[]
-        for _,candidate,_ in shortlist:
+        for _,candidate in shortlist:
             check=verify_candidate(product,candidate,seen_hashes=seen_hashes,run_vision=True)
             record={"url":candidate["image"],"score":check.score,"source":candidate["source"],
                     "title":candidate["title"],"needs_review":check.needs_review,
@@ -118,6 +119,8 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
             if check.accepted: verified.append(record)
             elif check.needs_review: review.append(record)
             else: rejected.append({"candidate":candidate,"reasons":check.reasons})
+        if len(verified)>=5: break
+        time.sleep(1.2)
         if len(verified)>=5: break
         time.sleep(1.2)
 
