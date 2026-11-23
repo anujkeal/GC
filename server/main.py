@@ -144,7 +144,7 @@ async def create_job(background_tasks:BackgroundTasks,request:Request,
  if not rows: raise HTTPException(400,"No product rows found. Expected columns include EAN, Article and Short Text.")
  job_id=str(uuid.uuid4())
  cache.create_job(job_id,filename,len(rows))
- background_tasks.add_task(_process_job,job_id,filename,rows,str(request.base_url).rstrip("/"),force_research)
+ background_tasks.add_task(_process_job,job_id,filename,rows,_service_base_url(request),force_research)
  return {"job_id":job_id,"status":"queued","total":len(rows)}
 
 @app.get("/jobs/{job_id}")
@@ -168,7 +168,7 @@ def legacy_search(request:Request,name:str="",ean:str="",article:str="",brand:st
                       "title":x.get("title",""),"source":x["source"],"score":x["score"],
                       "needs_review":x.get("needs_review",False)} for x in images],
           "status":"verified","clean_name":cached.get("clean_name",""),"cached":True}
- result=search_product(row,base_url=str(request.base_url).rstrip("/"))
+ result=search_product(row,base_url=_service_base_url(request))
  cache.save_product(product_id,row,result)
  return {"product_id":product_id,"query":name,"count":len(result["images"]),
          "results":[{"image":x["url"],"thumbnail":x["url"],"url":x["source"],
