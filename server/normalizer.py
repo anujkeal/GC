@@ -82,7 +82,8 @@ def normalize_product(description: str, ean: str="", article: str="", brand: str
     unknown=[]
     for token in re.findall(r"[A-Za-z]{2,8}",raw):
         low=token.lower()
-        if len(low)<=5 and low not in known and low not in known_words and low not in unknown:
+        abbreviation_like = token.isupper() or (len(low) <= 7 and sum(ch in "aeiou" for ch in low) <= 1)
+        if abbreviation_like and low not in known and low not in known_words and low not in unknown:
             unknown.append(low)
     llm=_llm_fallback(raw,unknown,brand) if use_llm else None
     confidence=0.94 if not unknown else 0.72
