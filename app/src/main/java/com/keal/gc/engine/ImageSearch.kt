@@ -159,7 +159,7 @@ class ImageSearch {
   if(ean.isNotBlank())queries.add(ean.trim())
   if(article.isNotBlank())queries.add(article.trim())
   if(clean.isNotBlank())queries.add(clean)
-  val core=tokens(clean).filterNot{it.matches(Regex("[a-z]*\\d+[a-z0-9]*")) || it in setOf("grey","gray","red","blue","green","yellow","black","white","pink")}.toList()
+  val core=tokens(clean).filterNot{it.matches(Regex("[a-z]*\\d+[a-z0-9]*")) || it in setOf("grey","gray","red","blue","green","yellow","black","white","pink","ghz","mhz")}.toList()
   if(core.isNotEmpty())queries.add(core.joinToString(" "))
   if(core.size>3)queries.add(core.take(4).joinToString(" "))
   if(brand.isNotBlank()&&core.isNotEmpty())queries.add(brand+" "+core.take(5).joinToString(" "))
