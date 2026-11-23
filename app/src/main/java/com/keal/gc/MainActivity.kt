@@ -66,6 +66,7 @@ fun CatalogueScreen(db: GcDatabase) {
             var done = 0
             var withPhotos = 0
             var errors = 0
+            var firstError = ""
             status = "Finding product photos: 0 / " + items.size
             try {
                 for (product in items) {
@@ -87,13 +88,18 @@ fun CatalogueScreen(db: GcDatabase) {
                     } catch (e: Exception) {
                         errors++
                         db.products().update(product.copy(imageStatus = "ERROR"))
-                        if (errors == 1) status = "Photo search issue: " + (e.message ?: "Please check your internet and retry.")
+                        if (firstError.isBlank()) firstError = e.message ?: "Unknown image search error."
                     }
                     done++
                     status = "Finding product photos: " + done + " / " + items.size + " · " + withPhotos + " products found"
                 }
-                status = "Photo search finished: " + withPhotos + " / " + items.size +
-                    " products have image results" + if (errors > 0) " · " + errors + " errors" else "."
+                status = if (errors > 0) {
+                    "Photo search issue: " + withPhotos + " / " + items.size + " products have photos; " + errors + " searches failed. " + firstError
+                } else if (withPhotos == 0) {
+                    "No relevant product photos were found on the searched retailer websites. Try again later or check the product description."
+                } else {
+                    "Photo search finished: " + withPhotos + " / " + items.size + " products have image results."
+                }
             } finally {
                 isSearching = false
             }
