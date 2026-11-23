@@ -100,9 +100,10 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
     candidate_map={}
     query_errors=[]
 
-    def evaluate_candidates():
+    def evaluate_candidates(candidate_list=None):
         prelim=[]
-        for candidate in candidate_map.values():
+        source_candidates=candidate_list if candidate_list is not None else candidate_map.values()
+        for candidate in source_candidates:
             meta_score,meta_reasons,_=score_metadata(product,candidate)
             if meta_score>=30:
                 prelim.append((meta_score,candidate))
@@ -144,7 +145,7 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
         bing=_bing_icrawler(bing_query,base_url,max_num=12)
         for candidate in bing:
             candidate_map.setdefault(candidate["image"],candidate)
-        evaluate_candidates()
+        evaluate_candidates(bing)
         verified=[x for x in evaluated.values() if x and not x["needs_review"]]
 
     review=[x for x in evaluated.values() if x and x["needs_review"]]
