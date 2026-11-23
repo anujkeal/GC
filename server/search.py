@@ -121,8 +121,6 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
             else: rejected.append({"candidate":candidate,"reasons":check.reasons})
         if len(verified)>=5: break
         time.sleep(1.2)
-        if len(verified)>=5: break
-        time.sleep(1.2)
 
     # Only use icrawler if DDGS did not provide five vision-verified photos.
     if len(verified)<5 and product.get("clean_name"):
