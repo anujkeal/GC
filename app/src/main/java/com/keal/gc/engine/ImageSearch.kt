@@ -16,7 +16,7 @@ class ImageSearch {
  private val stop=setOf("the","and","for","with","toy","toys","product","kids","boys","girls","age","years","new","assorted","multicolour","multicolor")
  private fun expand(raw:String):String {
   var s=raw.lowercase(Locale.ROOT)
-  val map=listOf(Regex("\\br\\s*/?\\s*c\\b") to "remote control",Regex("\\brc\\b") to "remote control",Regex("\\btrck\\b") to "truck",Regex("\\bmnstr\\b") to "monster",Regex("\\bclimbin\\b") to "climbing",Regex("\\bwtch\\b") to "watch",Regex("\\brmt\\b") to "remote",Regex("\\bgry\\b") to "grey",Regex("\\bblmg\\b") to "bubble",Regex("\\bicecream\\b") to "ice cream")
+  val map=listOf(Regex("\\br\\s*/?\\s*c\\b") to "remote control",Regex("\\brc\\b") to "remote control",Regex("\\btrck\\b") to "truck",Regex("\\bmnstr\\b") to "monster",Regex("\\bhighspd\\b") to "high speed",Regex("\\bamphi\\b") to "amphibious",Regex("\\bclimbin\\b") to "climbing",Regex("\\bwtch\\b") to "watch",Regex("\\brmt\\b") to "remote",Regex("\\bgry\\b") to "grey",Regex("\\bblmg\\b") to "bubble",Regex("\\bicecream\\b") to "ice cream")
   map.forEach{(p,v)->s=p.replace(s,v)}
   return s.replace(Regex("[^a-z0-9]+")," ").replace(Regex("\\s+")," ").trim()
  }
@@ -32,10 +32,11 @@ class ImageSearch {
   val clean=listOf(brand,expand(name)).filter{it.isNotBlank()}.joinToString(" ")
   require(clean.isNotBlank()||ean.isNotBlank()||article.isNotBlank()){ "No product identifier or name to search." }
   val queries=linkedSetOf<String>()
-  if(ean.isNotBlank()) domains.forEach{queries.add("site:$it \"${ean.trim()}\" $clean")}
-  if(article.isNotBlank()) domains.forEach{queries.add("site:$it \"${article.trim()}\" $clean")}
-  domains.forEach{queries.add("site:$it \"$clean\"")}
-  queries.add("\"$clean\" toy"); queries.add("$clean remote control toy")
+  if(ean.isNotBlank()) queries.add("\"${ean.trim()}\" $clean toy")
+  if(article.isNotBlank()) queries.add("\"${article.trim()}\" $clean toy")
+  queries.add("site:hamleys.in \"$clean\"")
+  queries.add("site:hamleys.com OR site:firstcry.com OR site:toysrus.in OR site:amazon.in \"$clean\"")
+  queries.add("\"$clean\" toy product")
   val results=linkedMapOf<String,Pair<Int,ImageCandidate>>()
   for(q in queries){
    if(results.size>=15) break
@@ -50,8 +51,11 @@ class ImageSearch {
      val relevance=score(name,brand,title); if(relevance==0)continue
      val original=meta.optString("murl"); val thumb=meta.optString("turl")
      val image=if(original.startsWith("https://"))original else if(thumb.startsWith("https://"))thumb else continue
-     val candidate=ImageCandidate(image,meta.optString("purl"),title,if(relevance>=85)"STRONG TITLE MATCH" else "TITLE MATCH")
-     val previous=results[image]; if(previous==null||relevance>previous.first)results[image]=relevance to candidate
+     val sourcePage=meta.optString("purl")
+     val sourceBonus=if(sourcePage.contains("hamleys.",true)) 12 else if(domains.any{sourcePage.contains(it,true)}) 6 else 0
+     val candidate=ImageCandidate(image,sourcePage,title,if(relevance>=85)"STRONG TITLE MATCH" else "TITLE MATCH")
+     val finalScore=relevance+sourceBonus
+     val previous=results[image]; if(previous==null||finalScore>previous.first)results[image]=finalScore to candidate
     }
    }
   }
