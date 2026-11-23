@@ -99,6 +99,7 @@ def normalize_product(description: str, ean: str="", article: str="", brand: str
         try: confidence=max(0.0,min(1.0,float(llm.get("confidence",confidence))))
         except (ValueError,TypeError): pass
         source="llm_fallback"
+        key_tokens["brand"]=[brand] if brand else []
     exact_codes=list(dict.fromkeys(codes+([ean.strip()] if ean.strip() else [])+([article.strip()] if article.strip() else [])))
     code_tokens=[]
     for code in exact_codes: code_tokens.extend(re.findall(r"[A-Za-z]+|\d+",code))
