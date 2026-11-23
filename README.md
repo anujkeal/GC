@@ -2,12 +2,15 @@
 
 Native Android stock catalogue built with Kotlin, Jetpack Compose and Room.
 
-## Product photo search
-- No API key, account, or separate server required.
-- After CSV import, searches public Bing Images results using each product's EAN and product name.
-- Displays up to five image thumbnails per product automatically; there is no manual approval step.
-- Saves image result URLs with the local product record and supports retrying failed searches.
-- Results are candidate matches, not a guarantee that every image depicts the exact SKU. Search uses EAN and product text to improve relevance; visually verify packaging/model before using a photo to identify stock.
+## Product photo matching
+- No API key or separate server.
+- Searches product-name, EAN and article-code queries across Hamleys India, Hamleys, FirstCry, Toys R Us India, Amazon India and general Bing Images results.
+- Expands common stock abbreviations (for example R/C, TRCK, MNSTR, HIGHSPD and AMPHI).
+- Filters results by product-title token overlap and prioritises Hamleys product pages.
+- Displays up to five relevant candidate images; if the search cannot find five convincing matches, it shows fewer rather than filling the row with unrelated pictures.
+- **Recheck all product photos** clears previously stored mismatched results and runs the improved search again.
+
+Search-engine results cannot guarantee an exact SKU match based only on a stock description. The app uses strict title relevance filtering to avoid unrelated photos; exact EAN matches are strongest when retailer listings expose the barcode.
 
 ## CSV import
 - Preserves EAN and article identifiers as text.
