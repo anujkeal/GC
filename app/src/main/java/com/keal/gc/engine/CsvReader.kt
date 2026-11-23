@@ -18,6 +18,23 @@ object CsvReader {
   val rows=parse(csv.removePrefix("\uFEFF"));if(rows.size<2)return emptyList()
   val h=rows.first();val e=find(h,"EAN No.","EAN","Barcode","Barcode No");val a=find(h,"Article Code","Article","Article No");val d=find(h,"Article Description","Product Description","Product Name","Description");val b=find(h,"Brand Desc.","Brand","Brand Name");val p=find(h,"MRP","Price","Selling Price");val q=find(h,"Qty","Quantity","Stock Qty")
   require(d>=0){"Product description column not found"}
-  return rows.drop(1).map{r->fun v(i:Int)=if(i in r.indices)r[i].trim() else "";CsvProduct(v(d),NameNormalizer.clean(v(d),v(b)),v(b),v(e),v(a),v(p).replace(",","").replace("₹","").toDoubleOrNull(),v(q).replace(",","").toDoubleOrNull()?.toInt(),if(v(d).isBlank())"Missing description" else if(v(e).isBlank())"EAN missing" else null)}
+  return rows.drop(1).map { cells ->
+   val eanValue = cells.getOrNull(e)?.trim().orEmpty()
+   val articleValue = cells.getOrNull(a)?.trim().orEmpty()
+   val descriptionValue = cells.getOrNull(d)?.trim().orEmpty()
+   val brandValue = cells.getOrNull(b)?.trim().orEmpty()
+   val priceValue = cells.getOrNull(p)?.replace(",", "")?.replace("₹", "")?.toDoubleOrNull()
+   val quantityValue = cells.getOrNull(q)?.replace(",", "")?.toDoubleOrNull()?.toInt()
+   CsvProduct(
+    original = descriptionValue,
+    name = NameNormalizer.clean(descriptionValue, brandValue),
+    brand = brandValue,
+    ean = eanValue,
+    article = articleValue,
+    mrp = priceValue,
+    quantity = quantityValue,
+    warning = if (descriptionValue.isBlank()) "Missing description" else if (eanValue.isBlank()) "EAN missing" else null
+   )
+  }
  }
 }
