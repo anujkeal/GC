@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.Flow
 @Dao interface ProductDao {
  @Query("SELECT * FROM products ORDER BY productName COLLATE NOCASE") fun observeAll():Flow<List<Product>>
  @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertAll(items:List<Product>)
+ @Query("SELECT * FROM products WHERE importId = :importId ORDER BY id") suspend fun byImportId(importId:Long):List<Product>
+ @Query("SELECT * FROM products WHERE imageStatus != 'DONE' ORDER BY id") suspend fun needingImages():List<Product>
  @Update suspend fun update(item:Product)
  @Query("SELECT * FROM products WHERE ean != '' GROUP BY ean HAVING COUNT(*) > 1") suspend fun duplicateEans():List<Product>
  @Query("SELECT * FROM products WHERE articleCode != '' GROUP BY articleCode HAVING COUNT(*) > 1") suspend fun duplicateArticles():List<Product>
