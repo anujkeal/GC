@@ -90,7 +90,7 @@ object CsvReader {
         val article = find(headers, "Article Code", "Article", "Article No", "Article Number", "SKU", "Item Code")
         val description = find(
             headers,
-            "Article Description", "Article Desc", "Product Description", "Product Name",
+            "Article Description", "Article Desc", "Short Text", "Product Description", "Product Name",
             "Description", "Item Description", "Material Description"
         )
         val brand = find(headers, "Brand Desc.", "Brand Description", "Brand", "Brand Name")
