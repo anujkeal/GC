@@ -30,7 +30,7 @@ class ImageSearch {
    Regex("\\bhighspd\\b") to "high speed",
    Regex("\\bamphi\\b") to "amphibious",
    Regex("\\bclimbin\\b") to "climbing",
-   Regex("\\bwtch\\b") to "watch",
+   Regex("\\bwtch\\b") to "with",
    Regex("\\brmt\\b") to "remote",
    Regex("\\bgry\\b") to "grey",
    Regex("\\bblmg\\b") to "bubble",
@@ -159,6 +159,10 @@ class ImageSearch {
   if(ean.isNotBlank())queries.add(ean.trim())
   if(article.isNotBlank())queries.add(article.trim())
   if(clean.isNotBlank())queries.add(clean)
+  val core=tokens(clean).filterNot{it.matches(Regex("[a-z]*\\d+[a-z0-9]*")) || it in setOf("grey","gray","red","blue","green","yellow","black","white","pink")}.toList()
+  if(core.isNotEmpty())queries.add(core.joinToString(" "))
+  if(core.size>3)queries.add(core.take(4).joinToString(" "))
+  if(brand.isNotBlank()&&core.isNotEmpty())queries.add(brand+" "+core.take(5).joinToString(" "))
   val results=linkedMapOf<String,Pair<Int,ImageCandidate>>()
   // Hamleys is searched first because the stock is intended for Hamleys inventory.
   for(q in queries)hamleysSearch(q,name,brand,results)
