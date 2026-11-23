@@ -101,7 +101,7 @@ class ImageSearch {
   val url="https://hamleys.in/products?q="+URLEncoder.encode(query,Charsets.UTF_8.name())
   val html=request(url)?:return
   val doc=Jsoup.parse(html,url)
-  val links=doc.select("a[href*=/product/],a[href*=/en/product/]")
+  val links=doc.select("a[href*='/product/'],a[href*='/en/product/']")
   for(link in links){
    val title=link.text().ifBlank{link.attr("title")}.ifBlank{link.selectFirst("img")?.attr("alt").orEmpty()}
    val relevance=score(name,brand,title)
