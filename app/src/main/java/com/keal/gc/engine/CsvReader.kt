@@ -7,7 +7,7 @@ object CsvReader {
    c=='"' && quoted && i+1<text.length && text[i+1]=='"'->{cell.append('"');i++}
    c=='"'->quoted=!quoted
    c==',' && !quoted->{row.add(cell.toString().trim());cell.setLength(0)}
-   (c=='\\n'||c=='\\r')&&!quoted->{if(c=='\\r'&&i+1<text.length&&text[i+1]=='\\n')i++;row.add(cell.toString().trim());cell.setLength(0);if(row.any{it.isNotBlank()})rows.add(row);row=mutableListOf()}
+   (c=='\n'||c=='\r')&&!quoted->{if(c=='\r'&&i+1<text.length&&text[i+1]=='\n')i++;row.add(cell.toString().trim());cell.setLength(0);if(row.any{it.isNotBlank()})rows.add(row);row=mutableListOf()}
    else->cell.append(c)
   };i++}
   row.add(cell.toString().trim());if(row.any{it.isNotBlank()})rows.add(row);return rows
