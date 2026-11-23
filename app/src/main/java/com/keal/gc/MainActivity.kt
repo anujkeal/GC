@@ -62,9 +62,9 @@ class MainActivity:ComponentActivity(){
    }}}
   }
  }
- selected?.let{p->var edited by remember(p.id){mutableStateOf(p.productName)};AlertDialog(onDismissRequest={selected=null},title={Text("Product details")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+ selected?.let{p->var edited by remember(p.id){mutableStateOf(p.productName)};var showImageSearch by remember(p.id){mutableStateOf(false)};AlertDialog(onDismissRequest={selected=null},title={Text("Product details")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
   if(p.selectedImage.isNotBlank())AsyncImage(p.selectedImage,null,Modifier.fillMaxWidth().height(140.dp))
   OutlinedTextField(edited,{edited=it},label={Text("Clean product name")})
-  Text("Original: ${p.originalDescription}");Text("EAN: ${p.ean}");Text("Article: ${p.articleCode}");Text("MRP: ${p.mrp?:"—"}   Quantity: ${p.quantity?:"—"}")
- }},confirmButton={TextButton(onClick={(context as ComponentActivity).lifecycleScope.launch{db.products().update(p.copy(productName=edited))};selected=null}){Text("Save name")}},dismissButton={TextButton(onClick={selected=null}){Text("Close")}})}
+  Text("Original: ${p.originalDescription}");Text("EAN: ${p.ean}");Text("Article: ${p.articleCode}");Text("MRP: ${p.mrp?:"—"}   Quantity: ${p.quantity?:"—"}")\n  Button(onClick={showImageSearch=true}){Text("Find product photos")}
+ }},confirmButton={TextButton(onClick={(context as ComponentActivity).lifecycleScope.launch{db.products().update(p.copy(productName=edited))};selected=null}){Text("Save name")}},dismissButton={TextButton(onClick={selected=null}){Text("Close")}});if(showImageSearch)ImageSearchPanel(p,onDismiss={showImageSearch=false},onSelect={candidate->(context as ComponentActivity).lifecycleScope.launch{db.products().update(p.copy(selectedImage=candidate.url,imageUrls=candidate.url,imageSources=candidate.source,imageConfidence=candidate.confidence,imageStatus="SELECTED"))};showImageSearch=false;selected=null})}
 }
