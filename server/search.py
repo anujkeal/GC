@@ -57,28 +57,35 @@ def _candidate(item:dict,query:str,tier:int)->dict|None:
     }
 
 def _bing_icrawler(query:str,base_url:str,max_num:int=12)->list[dict]:
-    """Bing fallback. Downloaded files are served by this API for subsequent verification."""
-    try:
-        safe=hashlib.sha1(query.encode("utf-8")).hexdigest()[:12]
-        target=MEDIA_DIR/safe
-        target.mkdir(parents=True,exist_ok=True)
-        crawler=BingImageCrawler(storage={"root_dir":str(target)},log_level=logging.ERROR)
-        crawler.crawl(keyword=query,max_num=max_num, min_size=(300,300), file_idx_offset="auto")
-        found=[]
-        for path in sorted(target.glob("*")):
-            if path.suffix.lower() not in {".jpg",".jpeg",".png",".webp"}: continue
-            name=path.name
-            found.append({
-                "image":f"{base_url.rstrip('/')}/media/{safe}/{quote_plus(name)}",
-                "thumbnail":f"{base_url.rstrip('/')}/media/{safe}/{quote_plus(name)}",
-                "title":query,"url":f"https://www.bing.com/images/search?q={quote_plus(query)}",
-                "source":"Bing Images (icrawler)","query":query,"tier":4
-            })
-            if len(found)>=max_num: break
-        return found
-    except Exception as exc:
-        log.warning("icrawler fallback failed query=%r error=%s",query,type(exc).__name__)
+    """Bing fallback. Retry transient crawler failures and serve cached local copies."""
+    safe=hashlib.sha1(query.encode("utf-8")).hexdigest()[:12]
+    target=MEDIA_DIR/safe
+    target.mkdir(parents=True,exist_ok=True)
+    last_error=None
+    for attempt in range(3):
+        try:
+            crawler=BingImageCrawler(storage={"root_dir":str(target)},log_level=logging.ERROR)
+            crawler.crawl(keyword=query,max_num=max_num,min_size=(300,300),file_idx_offset="auto")
+            last_error=None
+            break
+        except Exception as exc:
+            last_error=exc
+            log.warning("icrawler attempt=%s failed query=%r error=%s",attempt+1,query,type(exc).__name__)
+            if attempt<2: time.sleep(2**attempt)
+    if last_error and not any(target.glob("*")):
         return []
+    found=[]
+    for path in sorted(target.glob("*")):
+        if path.suffix.lower() not in {".jpg",".jpeg",".png",".webp"}: continue
+        name=path.name
+        found.append({
+            "image":f"{base_url.rstrip('/')}/media/{safe}/{quote_plus(name)}",
+            "thumbnail":f"{base_url.rstrip('/')}/media/{safe}/{quote_plus(name)}",
+            "title":query,"url":f"https://www.bing.com/images/search?q={quote_plus(query)}",
+            "source":"Bing Images (icrawler)","query":query,"tier":4
+        })
+        if len(found)>=max_num: break
+    return found
 
 def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
     normalized=normalize_product(
