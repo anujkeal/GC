@@ -53,7 +53,7 @@ def _read_rows(filename:str,data:bytes)->list[dict]:
    if row.get("description") or row.get("ean") or row.get("article"): rows.append(row)
   return rows
  # UTF-8 BOM, UTF-16 exports, comma/semicolon/tab separated.
- text=data.decode("utf-8-sig",errors="replace")
+ text=data.decode("utf-16" if b"\x00" in data[:128] else "utf-8-sig",errors="replace")
  sample=text[:8192]
  try: dialect=csv.Sniffer().sniff(sample,delimiters=",;\t|")
  except csv.Error: dialect=csv.excel
