@@ -80,7 +80,7 @@ def _service_base_url(request:Request)->str:
  if configured: return configured.rstrip("/")
  host=request.url.hostname or ""
  if host.endswith(".onrender.com"): return "https://"+host
- return _service_base_url(request)
+ return str(request.base_url).rstrip("/")
 
 def _product_id(row:dict)->str:
  basis="|".join([row.get("ean","").strip(),row.get("article","").strip(),row.get("description","").strip().lower()])
