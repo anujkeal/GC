@@ -77,7 +77,7 @@ object CsvReader {
     private fun find(headers: List<String>, vararg names: String): Int =
         headers.indexOfFirst { header ->
             val key = norm(header)
-            names.any { key == norm(it) || key.startsWith(norm(it)) }
+            names.any { key == norm(it) }
         }
 
     fun products(csv: String): List<CsvProduct> {
@@ -98,7 +98,7 @@ object CsvReader {
         val quantity = find(headers, "Qty", "Quantity", "Stock Qty", "Available Qty")
 
         require(description >= 0) {
-            "Product description column not found. Found columns: \${headers.joinToString()}"
+            "Product description column not found. Found columns: ${headers.joinToString()}"
         }
 
         return rows.drop(1).mapNotNull { cells ->
