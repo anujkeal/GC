@@ -87,7 +87,7 @@ fun CatalogueScreen(db: GcDatabase) {
                                 imageStatus = if (verified.isNotEmpty()) "DONE" else if (candidates.isNotEmpty()) "REVIEW" else "DONE"
                             )
                         )
-                        if (candidates.isNotEmpty()) withPhotos++
+                        if (verified.isNotEmpty()) withPhotos++
                     } catch (e: Exception) {
                         errors++
                         db.products().update(product.copy(imageStatus = "ERROR"))
