@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: gc-ddgs-api
-    runtime: docker
-    dockerfilePath: ./server/Dockerfile
-    dockerContext: .
-    healthCheckPath: /health
-    plan: free
-    autoDeploy: true
