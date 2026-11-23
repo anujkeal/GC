@@ -53,7 +53,7 @@ def _conflicts(product:dict,title:str,page_url:str)->list[str]:
     if re.search(r"\bset of\s+\d+\b",text):
         conflicts.append("possible bundle mismatch: listing says set of")
     expected_size=set(product.get("key_tokens",{}).get("size",[]))
-    found_size=set(re.findall(r"\b\d+(?:\.\d+)?\s*(?:cm|mm|inch|inches)\b",text))
+    found_size={re.sub(r"\s+","",x).lower() for x in re.findall(r"\b\d+(?:\.\d+)?\s*(?:cm|mm|inch|inches)\b",text)}
     if expected_size and found_size and not expected_size.intersection(found_size):
         conflicts.append(f"size mismatch: expected {sorted(expected_size)}, found {sorted(found_size)}")
     return conflicts
@@ -116,7 +116,7 @@ def score_metadata(product:dict,candidate:dict)->tuple[int,list[str],list[str]]:
     score=0
     ean=str(product.get("ean") or "").strip()
     article=str(product.get("article") or "").strip()
-    if any(code and code.lower() in text for code in (ean,article)):
+    if any(code and re.search(r"(?<![a-z0-9])"+re.escape(code.lower())+r"(?![a-z0-9])",text) for code in (ean,article)):
         score+=40
         reasons.append("+40 exact EAN/article found in title, alt text or source URL")
     buckets=product.get("key_tokens") or {}
@@ -128,7 +128,8 @@ def score_metadata(product:dict,candidate:dict)->tuple[int,list[str],list[str]]:
     important=list(dict.fromkeys(important))
     if not important:
         important=[x.lower() for x in re.findall(r"[a-z0-9]+",product.get("clean_name","")) if len(x)>=3]
-    matched=[token for token in important if token in text]
+    matched=[token for token in important
+             if re.search(r"(?<![a-z0-9])"+re.escape(token)+r"(?![a-z0-9])",text)]
     points=round(30*len(set(matched))/max(1,len(set(important))))
     score+=points
     reasons.append(f"+{points} key-token coverage ({len(set(matched))}/{len(set(important))})")
