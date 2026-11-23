@@ -54,7 +54,7 @@ class ImageSearch(context: Context) {
                 }.getOrNull().orEmpty()
                 throw IOException(
                     detail.ifBlank {
-                        "DDGS server returned HTTP \${response.code}. Check that the image service is deployed."
+                        "DDGS server returned HTTP ${response.code}. Check that the image service is deployed."
                     }
                 )
             }
