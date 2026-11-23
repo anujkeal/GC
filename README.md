@@ -1,29 +1,23 @@
 # GC — Smart Product Photo Finder
 
-Native Android inventory catalogue built with Kotlin, Jetpack Compose, Room and a product normalization engine.
+Native Android stock catalogue built with Kotlin, Jetpack Compose and Room.
 
-## Implemented
-- CSV import via Android Storage Access Framework.
-- RFC-style quoted CSV parsing, commas inside quoted fields, UTF-8 BOM handling and flexible header aliases.
-- Separate original description and editable normalized product name.
-- EAN and article codes retained as strings (leading zeroes are not discarded).
-- Room-backed product catalogue and import history.
-- Local search across product name, EAN, article code and brand.
-- Product detail editor.
-- Google Custom Search JSON API image search action, up to five HTTPS candidates, source metadata, basic confidence labels and manual candidate selection.
-- Unit tests for quoted CSV cells, identifier preservation, numeric fields and known abbreviation expansion.
-- GitHub Actions workflow for unit tests, debug APK build and artifact upload.
+## Product catalogue
+- Imports stock CSV files and preserves EAN/article identifiers as text.
+- Recognises stock headers including Article, EAN, Short Text, MRP, IST TO and Qty.
+- Searches Google Images automatically through the Serper Images API after import.
+- Fetches up to five image results per product and displays them together; no manual image approval is required.
+- Stores image result URLs in the local Room catalogue so results remain associated with each product.
+- Allows retrying photo search for products without results.
+- API key is entered once in the app's API settings and stored in private app preferences; it is not embedded in the APK or committed to this repository.
 
-## Current scope and remaining work
-This is an early functional foundation, not yet the complete feature set in the product specification. CSV preview/manual column mapping, batch/background image processing, persistent image caching, candidate rejection/history, advanced filters/sorting, duplicate review UI, CSV/PDF export and complete settings/history screens are not implemented yet. Search candidates are not automatically verified as exact products; confidence labels are heuristic and must be reviewed by a person. Google image search has not been live-tested with credentials.
+## Google Images API setup
+1. Create an account at https://serper.dev/.
+2. Copy the API key from the Serper dashboard.
+3. Open GC → API settings, paste the key, and choose **Save and find photos**.
+4. Import your stock CSV. GC will search and show up to five images per product.
 
-## Google image search credentials
-Create a Programmable Search Engine with image search enabled and enable the Custom Search JSON API in Google Cloud. Put the following in your local, untracked `local.properties` file:
-```properties
-GOOGLE_CSE_KEY=your_api_key
-GOOGLE_CSE_ID=your_search_engine_id
-```
-Never commit `local.properties`. API quota and billing are controlled by Google. The app displays a configuration error when credentials are missing.
+Image results are search candidates, not guaranteed verified product matches. Use EAN-based search first and compare the visible product packaging/model before relying on a photo. API usage and limits are governed by Serper.
 
 ## Build
 Requirements: JDK 17, Android SDK platform 35 and Gradle 8.9.
@@ -31,7 +25,7 @@ Requirements: JDK 17, Android SDK platform 35 and Gradle 8.9.
 gradle :app:testDebugUnitTest
 gradle :app:assembleDebug
 ```
-The GitHub Actions workflow runs both commands and uploads `gc-debug-apk` when successful.
+GitHub Actions runs tests and uploads the debug APK as `gc-debug-apk`.
 
 ## CSV columns
-A product description column is required. Supported aliases include EAN/Barcode, Article/Article Code, Product Name/Article Description, Brand, MRP/Price and Qty/Quantity.
+Supported aliases include EAN/Barcode, Article/Article Code, Short Text/Product Name/Article Description, Brand, MRP/Price and Qty/Quantity.
