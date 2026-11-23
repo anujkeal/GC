@@ -71,7 +71,7 @@ fun CatalogueScreen(db: GcDatabase) {
                 for (product in items) {
                     try {
                         val candidates = withContext(Dispatchers.IO) {
-                            ImageSearch().search(product.ean, product.productName, product.brand)
+                            ImageSearch().search(product.ean, product.articleCode, product.productName, product.brand)
                         }
                         val urls = JSONArray().apply { candidates.forEach { put(it.url) } }.toString()
                         db.products().update(
@@ -199,10 +199,16 @@ fun CatalogueScreen(db: GcDatabase) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(enabled = !isSearching, onClick = {
                         scope.launch {
-                            val pending = withContext(Dispatchers.IO) { db.products().needingImages() }
-                            searchPhotos(pending)
+                            val all = withContext(Dispatchers.IO) { db.products().allForImageRefresh() }
+                            withContext(Dispatchers.IO) {
+                                all.forEach { item ->
+                                    db.products().update(item.copy(imageUrls = "", selectedImage = "", imageSources = "", imageConfidence = "NONE", imageStatus = "NOT_SEARCHED"))
+                                }
+                            }
+                            val fresh = withContext(Dispatchers.IO) { db.products().allForImageRefresh() }
+                            searchPhotos(fresh)
                         }
-                    }) { Text(if (isSearching) "Searching photos…" else "Find missing photos") }
+                    }) { Text(if (isSearching) "Searching photos…" else "Recheck all product photos") }
                 }
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                     items(filtered, key = { it.id }) { product ->
