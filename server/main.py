@@ -75,6 +75,13 @@ def _require_staff(provided:str|None):
  if provided!=required:
   raise HTTPException(401,"Invalid staff approval key.")
 
+def _service_base_url(request:Request)->str:
+ configured=os.getenv("PUBLIC_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL")
+ if configured: return configured.rstrip("/")
+ host=request.url.hostname or ""
+ if host.endswith(".onrender.com"): return "https://"+host
+ return _service_base_url(request)
+
 def _product_id(row:dict)->str:
  basis="|".join([row.get("ean","").strip(),row.get("article","").strip(),row.get("description","").strip().lower()])
  return hashlib.sha256(basis.encode("utf-8")).hexdigest()[:24]
