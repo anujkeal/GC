@@ -8,6 +8,7 @@ import httpx
 
 DATA_DIR = Path(__file__).parent
 ABBREVIATIONS_PATH = DATA_DIR / "abbreviations.json"
+BRANDS_PATH = DATA_DIR / "brands.json"
 COLORS = {"red","blue","green","grey","gray","black","white","pink","brown","purple","orange","yellow","silver","gold"}
 SCALE_RE = re.compile(r"(?<!\d)(\d{1,2}\s*:\s*\d{1,3})(?!\d)", re.I)
 CODE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{1,5}\d{3,}[A-Za-z0-9]*|\d{5,})(?![A-Za-z0-9])")
@@ -52,6 +53,13 @@ def _llm_fallback(raw: str, unknown: list[str], brand: str) -> dict | None:
 def normalize_product(description: str, ean: str="", article: str="", brand: str="",
                       abbreviations: dict[str,str] | None=None, use_llm: bool=True) -> NormalizedProduct:
     raw=(description or "").strip()
+    if not brand:
+        try:
+            brand_map=json.loads(BRANDS_PATH.read_text(encoding="utf-8"))
+            lowered=raw.lower()
+            matches=[(len(alias),canonical) for canonical,aliases in brand_map.items() for alias in aliases if alias.lower() in lowered]
+            if matches: brand=max(matches)[1]
+        except Exception: pass
     dictionary=abbreviations if abbreviations is not None else load_abbreviations()
     codes=list(dict.fromkeys(CODE_RE.findall(raw)))
     scale_match=SCALE_RE.search(raw)
@@ -66,7 +74,7 @@ def normalize_product(description: str, ean: str="", article: str="", brand: str
     clean=re.sub(r"\s*:\s*",":",clean)
     words=WORD_RE.findall(clean)
     colors=list(dict.fromkeys(w.lower() for w in words if w.lower() in COLORS))
-    key_tokens={"model":codes.copy(),"color":colors,"scale":[scale] if scale else [],
+    key_tokens={"brand":[brand] if brand else [],"model":codes.copy(),"color":colors,"scale":[scale] if scale else [],
                 "size":list(dict.fromkeys(sizes)),
                 "descriptive":[w.lower() for w in words if w.lower() not in COLORS]}
     known=set(dictionary)
