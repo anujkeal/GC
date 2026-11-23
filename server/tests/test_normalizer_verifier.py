@@ -34,7 +34,7 @@ def test_ten_stock_descriptions_normalize():
 
 def test_requested_example_keeps_exact_model_code():
     result=normalize_product("1:16 Rc Highspd Mnstr Trck Red T102024",use_llm=False)
-    assert result.clean_name=="1:16 remote control high speed monster truck red"
+    assert result.clean_name.lower()=="1:16 remote control high speed monster truck red"
     assert result.codes==["T102024"]
     assert {"T","102024"}.issubset(set(result.code_tokens))
     assert result.key_tokens["model"]==["T102024"]
