@@ -68,6 +68,13 @@ def _read_rows(filename:str,data:bytes)->list[dict]:
   if row.get("description") or row.get("ean") or row.get("article"): rows.append(row)
  return rows
 
+def _require_staff(provided:str|None):
+ required=os.getenv("STAFF_API_KEY")
+ if not required:
+  raise HTTPException(503,"Staff actions are disabled until STAFF_API_KEY is configured.")
+ if provided!=required:
+  raise HTTPException(401,"Invalid staff approval key.")
+
 def _product_id(row:dict)->str:
  basis="|".join([row.get("ean","").strip(),row.get("article","").strip(),row.get("description","").strip().lower()])
  return hashlib.sha256(basis.encode("utf-8")).hexdigest()[:24]
@@ -118,7 +125,8 @@ def health():
 
 @app.post("/jobs",status_code=202)
 async def create_job(background_tasks:BackgroundTasks,request:Request,
-                     file:UploadFile=File(...),force_research:bool=Form(False)):
+                     file:UploadFile=File(...),force_research:bool=Form(False),x_staff_key:str|None=Header(default=None)):
+ if force_research: _require_staff(x_staff_key)
  filename=file.filename or "inventory.csv"
  if Path(filename).suffix.lower() not in {".csv",".txt",".xlsx",".xlsm"}:
   raise HTTPException(415,"Upload a CSV or Excel (.xlsx) file.")
@@ -141,7 +149,8 @@ def job_status(job_id:str):
          "error":value.get("error"),"results":value["results"]}
 
 @app.get("/api/search-images")
-def legacy_search(request:Request,name:str="",ean:str="",article:str="",brand:str="",force:bool=False):
+def legacy_search(request:Request,name:str="",ean:str="",article:str="",brand:str="",force:bool=False,x_staff_key:str|None=Header(default=None)):
+ if force: _require_staff(x_staff_key)
  row={"description":name,"ean":ean,"article":article,"brand":brand}
  product_id=_product_id(row)
  cached=cache.get_cached(product_id)
@@ -170,8 +179,7 @@ class ImageApproval(BaseModel):
 
 @app.put("/products/{product_id}/images")
 def approve_product_images(product_id:str,payload:ImageApproval,x_staff_key:str|None=Header(default=None)):
- required=os.getenv("STAFF_API_KEY")
- if required and x_staff_key!=required: raise HTTPException(401,"Invalid staff approval key.")
+ _require_staff(x_staff_key)
  try:
   product=cache.approve_images(product_id,payload.images,payload.staff_id)
  except KeyError: raise HTTPException(404,"Product not found.")
