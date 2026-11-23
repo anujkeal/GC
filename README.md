@@ -36,7 +36,7 @@ The SQLite cache is stored under `/app/data/gc.sqlite3`. Render's free filesyste
 - `POST /jobs` — multipart `file` (CSV/XLSX), optional `force_research`; returns `job_id`.
 - `GET /jobs/{job_id}` — status, done/total, results.
 - `GET /review-queue` — products needing staff review.
-- `PUT /products/{id}/images` — staff approval/replacement. Optional `STAFF_API_KEY` enforces `X-Staff-Key`.
+- `PUT /products/{id}/images` — staff approval/replacement. Configure `STAFF_API_KEY` in Render to enable staff approvals and forced re-search; send it as `X-Staff-Key`.
 - `GET /products/{id}/rejections` — candidate rejection reasons.
 - `GET /health` — health check.
 
