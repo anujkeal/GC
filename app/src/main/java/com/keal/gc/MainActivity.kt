@@ -53,35 +53,25 @@ private fun decodeImageUrls(raw: String): List<String> = runCatching {
 fun CatalogueScreen(db: GcDatabase) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val products by db.products().observeAll().collectAsState(initial = emptyList())
-    val preferences = remember { context.getSharedPreferences("gc_settings", android.content.Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var isImporting by remember { mutableStateOf(false) }
     var isSearching by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
-    var apiKey by remember { mutableStateOf(preferences.getString("serper_api_key", "").orEmpty()) }
-    var keyDraft by remember { mutableStateOf(apiKey) }
 
     fun searchPhotos(items: List<Product>) {
-        if (apiKey.isBlank()) {
-            status = "Imported. Add your Serper API key in API settings to fetch Google photos."
-            keyDraft = apiKey
-            showSettings = true
-            return
-        }
         if (isSearching || items.isEmpty()) return
         isSearching = true
         scope.launch {
             var done = 0
             var withPhotos = 0
             var errors = 0
-            status = "Finding Google photos: 0 / " + items.size
+            status = "Finding product photos: 0 / " + items.size
             try {
                 for (product in items) {
                     try {
                         val candidates = withContext(Dispatchers.IO) {
-                            ImageSearch(apiKey).search(product.ean, product.productName, product.brand)
+                            ImageSearch().search(product.ean, product.productName, product.brand)
                         }
                         val urls = JSONArray().apply { candidates.forEach { put(it.url) } }.toString()
                         db.products().update(
@@ -97,13 +87,13 @@ fun CatalogueScreen(db: GcDatabase) {
                     } catch (e: Exception) {
                         errors++
                         db.products().update(product.copy(imageStatus = "ERROR"))
-                        if (errors == 1) status = "Image search error: " + (e.message ?: "Check API key and internet.")
+                        if (errors == 1) status = "Photo search issue: " + (e.message ?: "Please check your internet and retry.")
                     }
                     done++
-                    status = "Finding Google photos: " + done + " / " + items.size + " · " + withPhotos + " found"
+                    status = "Finding product photos: " + done + " / " + items.size + " · " + withPhotos + " products found"
                 }
-                status = "Photo search finished: " + withPhotos + " products with photos. " +
-                    (items.size - withPhotos) + " without results" + if (errors > 0) " · $errors errors" else "."
+                status = "Photo search finished: " + withPhotos + " / " + items.size +
+                    " products have image results" + if (errors > 0) " · " + errors + " errors" else "."
             } finally {
                 isSearching = false
             }
@@ -166,7 +156,6 @@ fun CatalogueScreen(db: GcDatabase) {
                     }
                 },
                 actions = {
-                    TextButton(onClick = { keyDraft = apiKey; showSettings = true }) { Text("API settings") }
                     TextButton(enabled = !isImporting, onClick = { picker.launch(arrayOf("*/*")) }) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Text(if (isImporting) "Importing…" else "Import CSV")
@@ -193,7 +182,7 @@ fun CatalogueScreen(db: GcDatabase) {
             }
             if (status.isNotBlank()) {
                 Surface(
-                    color = if (status.startsWith("Import failed") || status.startsWith("Image search error")) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+                    color = if (status.startsWith("Import failed") || status.startsWith("Photo search issue")) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
@@ -236,7 +225,7 @@ fun CatalogueScreen(db: GcDatabase) {
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(if (product.imageStatus == "ERROR") "IMAGE SEARCH FAILED · TAP TO RETRY" else if (product.imageStatus == "DONE") "NO PHOTOS FOUND" else "PHOTOS NOT SEARCHED")
+                                        Text(if (product.imageStatus == "ERROR") "PHOTO SEARCH FAILED · TAP TO RETRY" else if (product.imageStatus == "DONE") "NO PHOTOS FOUND" else "PHOTOS NOT SEARCHED")
                                     }
                                 }
                             }
@@ -250,30 +239,5 @@ fun CatalogueScreen(db: GcDatabase) {
                 }
             }
         }
-    }
-
-    if (showSettings) {
-        AlertDialog(
-            onDismissRequest = { showSettings = false },
-            title = { Text("Google Images API") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Paste your Serper API key. It is saved in this app on this device and is not built into the APK.")
-                    OutlinedTextField(value = keyDraft, onValueChange = { keyDraft = it }, label = { Text("Serper API key") }, singleLine = true)
-                    TextButton(onClick = {
-                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse("https://serper.dev/")))
-                    }) { Text("Create a key at serper.dev") }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    apiKey = keyDraft.trim()
-                    preferences.edit().putString("serper_api_key", apiKey).apply()
-                    showSettings = false
-                    if (apiKey.isNotBlank()) searchPhotos(products.filter { it.imageUrls.isBlank() || it.imageStatus != "DONE" })
-                }) { Text("Save and find photos") }
-            },
-            dismissButton = { TextButton(onClick = { showSettings = false }) { Text("Cancel") } }
-        )
     }
 }
