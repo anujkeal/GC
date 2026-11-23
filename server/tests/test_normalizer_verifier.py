@@ -16,7 +16,7 @@ SAMPLES = [
     ("Kop Rp Grn Toaster","Kop Rp Green Toaster","","","green"),
     ("Be Set With Backpack Carrier","Be Set With Backpack Carrier","","",""),
     ("City Assortment 6asst","City Assortment 6asst","","",""),
-    ("Clue Cluedo Classic Refresh F6420","Clue Cluedo Classic Refresh","","F6420","",""),
+    ("Clue Cluedo Classic Refresh F6420","Clue Cluedo Classic Refresh","F6420","",""),
 ]
 
 def test_ten_stock_descriptions_normalize():
