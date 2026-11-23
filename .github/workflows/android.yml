@@ -28,6 +28,10 @@ jobs:
      run: python3 -m pip install -r server/requirements.txt
    - name: Check Python backend syntax
      run: python3 -m compileall -q server
+   - name: Import FastAPI service
+     env:
+      PYTHONPATH: server
+     run: python3 -c "import main; main.cache.init_db(); print('FastAPI routes:', len(main.app.routes))"
    - name: Run product matching tests
      env:
       PYTHONPATH: server
