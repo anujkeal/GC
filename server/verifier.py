@@ -73,7 +73,10 @@ def _download(url:str)->tuple[bytes,int,int,str]:
         w,h=image.size
         corners=[image.crop((0,0,w//3,h//4)),image.crop((2*w//3,0,w,h//4)),
                  image.crop((0,3*h//4,w//3,h)),image.crop((2*w//3,3*h//4,w,h))]
-        corner_text=" ".join(pytesseract.image_to_string(crop,config="--psm 11") for crop in corners).lower()
+        corner_canvas=Image.new("RGB",(2*max(1,w//3),2*max(1,h//4)),"white")
+        for idx,crop in enumerate(corners):
+            corner_canvas.paste(crop,((idx%2)*max(1,w//3),(idx//2)*max(1,h//4)))
+        corner_text=pytesseract.image_to_string(corner_canvas,config="--psm 11").lower()
         if any(term in corner_text for term in WATERMARK_TERMS):
             raise ValueError("visible stock-image watermark detected by OCR")
     except ImportError:
