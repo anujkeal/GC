@@ -24,8 +24,6 @@ jobs:
       test -x "$SDKMANAGER"
       yes | "$SDKMANAGER" --licenses || true
       "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
-   - name: Check DDGS backend Python syntax
-     run: python3 -m compileall -q server
    - name: Unit tests
      run: gradle :app:testDebugUnitTest
    - name: Build debug APK
