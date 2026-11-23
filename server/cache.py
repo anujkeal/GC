@@ -85,7 +85,8 @@ def save_product(product_id:str,row:dict,result:dict):
         db.execute("""INSERT INTO products(product_id,ean,article,description,clean_name,images_json,status,verified_by,verified_at,updated_at)
         VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(product_id) DO UPDATE SET
         ean=excluded.ean,article=excluded.article,description=excluded.description,
-        clean_name=excluded.clean_name,images_json=excluded.images_json,status=excluded.status,
+        clean_name=excluded.clean_name,images_json=CASE WHEN products.verified_by='staff' THEN products.images_json ELSE excluded.images_json END,
+        status=CASE WHEN products.verified_by='staff' THEN products.status ELSE excluded.status END,
         verified_by=CASE WHEN products.verified_by='staff' THEN 'staff' ELSE excluded.verified_by END,
         verified_at=CASE WHEN products.verified_by='staff' THEN products.verified_at ELSE excluded.verified_at END,
         updated_at=excluded.updated_at""",
