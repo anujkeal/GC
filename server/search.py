@@ -115,7 +115,8 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
             if url in evaluated:
                 continue
             check=verify_candidate(product,candidate,seen_hashes=seen_hashes,run_vision=True)
-            record={"url":url,"score":check.score,"source":candidate["source"],
+            record={"url":url,"score":check.score,"source":candidate["url"] or candidate["source"],
+                    "source_name":candidate["source"],
                     "title":candidate["title"],"needs_review":check.needs_review,
                     "reasons":check.reasons,"vision":check.vision}
             evaluated[url]=record if not check.rejected else None
