@@ -141,7 +141,7 @@ def job_status(job_id:str):
          "error":value.get("error"),"results":value["results"]}
 
 @app.get("/api/search-images")
-def legacy_search(name:str="",ean:str="",article:str="",brand:str="",request:Request=None):
+def legacy_search(request:Request,name:str="",ean:str="",article:str="",brand:str=""):
  row={"description":name,"ean":ean,"article":article,"brand":brand}
  result=search_product(row,base_url=str(request.base_url).rstrip("/") if request else "")
  return {"query":name,"count":len(result["images"]),
