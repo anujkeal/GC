@@ -98,8 +98,10 @@ fun CatalogueScreen(db: GcDatabase) {
                 }
                 status = if (errors > 0) {
                     "Photo search issue: " + withPhotos + " / " + items.size + " products have photos; " + errors + " searches failed. " + firstError
+                } else if (needsReview > 0 && withPhotos == 0) {
+                    "Search finished: " + needsReview + " products have candidate photos awaiting staff review."
                 } else if (withPhotos == 0) {
-                    "No relevant product photos were found on the searched retailer websites. Try again later or check the product description."
+                    "No reliable product photos were found. Items remain available for manual review."
                 } else {
                     "Photo search finished: " + withPhotos + " verified; " + needsReview + " need staff review."
                 }
