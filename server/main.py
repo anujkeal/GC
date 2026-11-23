@@ -128,7 +128,7 @@ def startup():
 
 @app.get("/health")
 def health():
- return {"status":"ok","service":"gc-product-image-matcher","engine":"ddgs+bing-icrawler"}
+ return {"status":"ok","service":"gc-product-image-matcher","engine":"openfoodfacts+commons+ddgs+bing+optional-google-lens"}
 
 @app.post("/jobs",status_code=202)
 async def create_job(background_tasks:BackgroundTasks,request:Request,
