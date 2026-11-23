@@ -67,8 +67,21 @@ def _download(url:str)->tuple[bytes,int,int,str]:
     image=Image.open(io.BytesIO(data)).convert("RGB")
     width,height=image.size
     if width<300 or height<300: raise ValueError(f"image too small ({width}x{height}); minimum 300x300")
+    # OCR image corners where stock-photo watermarks commonly appear.
+    try:
+        import pytesseract
+        w,h=image.size
+        corners=[image.crop((0,0,w//3,h//4)),image.crop((2*w//3,0,w,h//4)),
+                 image.crop((0,3*h//4,w//3,h)),image.crop((2*w//3,3*h//4,w,h))]
+        corner_text=" ".join(pytesseract.image_to_string(crop,config="--psm 11") for crop in corners).lower()
+        if any(term in corner_text for term in WATERMARK_TERMS):
+            raise ValueError("visible stock-image watermark detected by OCR")
+    except ImportError:
+        pass
     phash=format(int(str(imagehash.phash(image)),16),"064b")
-    return data,width,height,phash
+    output=io.BytesIO()
+    image.save(output,format="JPEG",quality=90)
+    return output.getvalue(),width,height,phash
 
 def _hamming(a:str,b:str)->int:
     return sum(x!=y for x,y in zip(a,b))
