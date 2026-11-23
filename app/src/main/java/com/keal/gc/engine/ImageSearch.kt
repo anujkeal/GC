@@ -18,6 +18,7 @@ data class ImageCandidate(val url:String,val source:String,val title:String,val 
  */
 class ImageSearch {
  private val client=OkHttpClient.Builder().callTimeout(22,TimeUnit.SECONDS).followRedirects(true).build()
+ private var successfulPages=0
  private val stop=setOf("the","and","for","with","toy","toys","product","kids","boys","girls","age","years","new","assorted","multicolour","multicolor","remote","control","car","vehicle")
  private fun expand(raw:String):String {
   var s=raw.lowercase(Locale.ROOT)
@@ -61,7 +62,7 @@ class ImageSearch {
    .header("Accept","text/html,application/xhtml+xml")
    .header("Accept-Language","en-IN,en;q=0.9")
    .build()
-  return runCatching{client.newCall(req).execute().use{if(it.isSuccessful)it.body?.string() else null}}.getOrNull()
+  return runCatching{client.newCall(req).execute().use{if(it.isSuccessful){successfulPages++;it.body?.string()}else null}}.getOrNull()
  }
  private fun imageFromElement(element:Element):List<String> = element.select("img").mapNotNull{img->
   listOf("src","data-src","data-original","data-lazy-src","data-fynd-img","srcset").asSequence()
@@ -151,6 +152,7 @@ class ImageSearch {
   }
  }
  fun search(ean:String,article:String,name:String,brand:String):List<ImageCandidate>{
+  successfulPages=0
   require(name.isNotBlank()||ean.isNotBlank()||article.isNotBlank()){"No product identifier or name to search."}
   val clean=expand(name)
   val queries=linkedSetOf<String>()
@@ -164,6 +166,7 @@ class ImageSearch {
    val combined=listOf(brand,clean).filter{it.isNotBlank()}.joinToString(" ")
    otherRetailerSearch(combined,name,brand,results)
   }
+  if(successfulPages==0) error("Could not reach Hamleys or the other product-image websites. Check your internet connection and try again.")
   return results.values.sortedByDescending{it.first}.map{it.second}.distinctBy{it.url}.take(5)
  }
 }
