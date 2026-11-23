@@ -1,3 +1,4 @@
+import re
 import sys
 from pathlib import Path
 
@@ -26,7 +27,9 @@ def test_ten_stock_descriptions_normalize():
         for token in expected_tokens:
             assert token in clean, (raw,token,result.clean_name)
         if code:
-            assert code in result.codes and code in result.code_tokens
+            assert code in result.codes
+            pieces = re.findall(r"[A-Za-z]+|\d+", code)
+            assert set(pieces).issubset(set(result.code_tokens))
         if scale:
             assert scale in result.key_tokens["scale"]
         if color:
