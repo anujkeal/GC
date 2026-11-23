@@ -9,9 +9,9 @@ import httpx
 DATA_DIR = Path(__file__).parent
 ABBREVIATIONS_PATH = DATA_DIR / "abbreviations.json"
 COLORS = {"red","blue","green","grey","gray","black","white","pink","brown","purple","orange","yellow","silver","gold"}
-SCALE_RE = re.compile(r"(?<!\\d)(\\d{1,2}\\s*:\\s*\\d{1,3})(?!\\d)", re.I)
-CODE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{1,5}\\d{3,}[A-Za-z0-9]*|\\d{5,})(?![A-Za-z0-9])")
-SIZE_RE = re.compile(r"\\b(\\d+(?:\\.\\d+)?\\s*(?:cm|mm|inch|inches|in|ft|pcs|pieces|pc))\\b", re.I)
+SCALE_RE = re.compile(r"(?<!\d)(\d{1,2}\s*:\s*\d{1,3})(?!\d)", re.I)
+CODE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{1,5}\d{3,}[A-Za-z0-9]*|\d{5,})(?![A-Za-z0-9])")
+SIZE_RE = re.compile(r"\b(\d+(?:\.\d+)?\s*(?:cm|mm|inch|inches|in|ft|pcs|pieces|pc))\b", re.I)
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:[:./-][A-Za-z0-9]+)*")
 
 @dataclass
@@ -55,15 +55,15 @@ def normalize_product(description: str, ean: str="", article: str="", brand: str
     dictionary=abbreviations if abbreviations is not None else load_abbreviations()
     codes=list(dict.fromkeys(CODE_RE.findall(raw)))
     scale_match=SCALE_RE.search(raw)
-    scale=re.sub(r"\\s+","",scale_match.group(1)) if scale_match else ""
-    sizes=[re.sub(r"\\s+","",m.group(1).lower()) for m in SIZE_RE.finditer(raw)]
+    scale=re.sub(r"\s+","",scale_match.group(1)) if scale_match else ""
+    sizes=[re.sub(r"\s+","",m.group(1).lower()) for m in SIZE_RE.finditer(raw)]
     expanded=raw
     for short,full in sorted(dictionary.items(),key=lambda item:len(item[0]),reverse=True):
         expanded=re.sub(r"(?<![A-Za-z0-9])"+re.escape(short)+r"(?![A-Za-z0-9])",full,expanded,flags=re.I)
     for code in codes:
         expanded=re.sub(r"(?<![A-Za-z0-9])"+re.escape(code)+r"(?![A-Za-z0-9])"," ",expanded,flags=re.I)
-    clean=re.sub(r"\\s+"," ",re.sub(r"[^A-Za-z0-9:./ -]"," ",expanded)).strip(" -")
-    clean=re.sub(r"\\s*:\\s*",":",clean)
+    clean=re.sub(r"\s+"," ",re.sub(r"[^A-Za-z0-9:./ -]"," ",expanded)).strip(" -")
+    clean=re.sub(r"\s*:\s*",":",clean)
     words=WORD_RE.findall(clean)
     colors=list(dict.fromkeys(w.lower() for w in words if w.lower() in COLORS))
     key_tokens={"model":codes.copy(),"color":colors,"scale":[scale] if scale else [],
@@ -92,6 +92,6 @@ def normalize_product(description: str, ean: str="", article: str="", brand: str
         source="llm_fallback"
     exact_codes=list(dict.fromkeys(codes+([ean.strip()] if ean.strip() else [])+([article.strip()] if article.strip() else [])))
     code_tokens=[]
-    for code in exact_codes: code_tokens.extend(re.findall(r"[A-Za-z]+|\\d+",code))
+    for code in exact_codes: code_tokens.extend(re.findall(r"[A-Za-z]+|\d+",code))
     return NormalizedProduct(raw,clean,brand.strip(),key_tokens,exact_codes,list(dict.fromkeys(code_tokens)),
                              unknown,confidence,source)
