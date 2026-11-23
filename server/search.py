@@ -95,68 +95,70 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
     product={**normalized,"ean":str(row.get("ean","")).strip(),
              "article":str(row.get("article","")).strip()}
     seen_hashes=[]
-    verified=[]
-    review=[]
-    rejected=[]
+    evaluated={}
+    rejected_by_url={}
     candidate_map={}
     query_errors=[]
+
+    def evaluate_candidates():
+        prelim=[]
+        for candidate in candidate_map.values():
+            meta_score,meta_reasons,_=score_metadata(product,candidate)
+            if meta_score>=50:
+                prelim.append((meta_score,candidate))
+            else:
+                rejected_by_url[candidate["image"]]={"candidate":candidate,
+                    "reasons":meta_reasons+["rejected: metadata score below 50"]}
+        shortlist=sorted(prelim,key=lambda x:x[0],reverse=True)[:8]
+        for _,candidate in shortlist:
+            url=candidate["image"]
+            if url in evaluated:
+                continue
+            check=verify_candidate(product,candidate,seen_hashes=seen_hashes,run_vision=True)
+            record={"url":url,"score":check.score,"source":candidate["source"],
+                    "title":candidate["title"],"needs_review":check.needs_review,
+                    "reasons":check.reasons,"vision":check.vision}
+            evaluated[url]=record if not check.rejected else None
+            if check.rejected:
+                rejected_by_url[url]={"candidate":candidate,"reasons":check.reasons}
+
     for tier,query in _queries(product):
         try:
             raw=_retry_ddgs(query)
             for item in raw:
                 candidate=_candidate(item,query,tier)
-                if candidate: candidate_map[candidate["image"]]=candidate
+                if candidate:
+                    candidate_map.setdefault(candidate["image"],candidate)
         except Exception as exc:
             query_errors.append(f"tier {tier}: {type(exc).__name__}")
-        # Cheap metadata pre-score first; download/OCR/vision only the top 8.
-        prelim=[]
-        for candidate in candidate_map.values():
-            meta_score,meta_reasons,conflicts=score_metadata(product,candidate)
-            if meta_score>=50:
-                prelim.append((meta_score,candidate))
-            else:
-                rejected.append({"candidate":candidate,"reasons":meta_reasons+["rejected: metadata score below 50"]})
-        shortlist=sorted(prelim,key=lambda x:x[0],reverse=True)[:8]
-        verified=[]; review=[]
-        for _,candidate in shortlist:
-            check=verify_candidate(product,candidate,seen_hashes=seen_hashes,run_vision=True)
-            record={"url":candidate["image"],"score":check.score,"source":candidate["source"],
-                    "title":candidate["title"],"needs_review":check.needs_review,
-                    "reasons":check.reasons,"vision":check.vision}
-            if check.accepted: verified.append(record)
-            elif check.needs_review: review.append(record)
-            else: rejected.append({"candidate":candidate,"reasons":check.reasons})
-        if len(verified)>=5: break
+        evaluate_candidates()
+        verified=[x for x in evaluated.values() if x and not x["needs_review"]]
+        if len(verified)>=5:
+            break
         time.sleep(1.2)
 
-    # Only use icrawler if DDGS did not provide five vision-verified photos.
+    verified=[x for x in evaluated.values() if x and not x["needs_review"]]
     if len(verified)<5 and product.get("clean_name"):
         bing=_bing_icrawler(product["clean_name"],base_url,max_num=12)
         for candidate in bing:
             candidate_map.setdefault(candidate["image"],candidate)
-        for candidate in bing:
-            check=verify_candidate(product,candidate,seen_hashes=seen_hashes,run_vision=True)
-            record={"url":candidate["image"],"score":check.score,"source":candidate["source"],
-                    "title":candidate["title"],"needs_review":check.needs_review,
-                    "reasons":check.reasons,"vision":check.vision}
-            if check.accepted: verified.append(record)
-            elif check.needs_review: review.append(record)
-            else: rejected.append({"candidate":candidate,"reasons":check.reasons})
-            if len(verified)>=5: break
+        evaluate_candidates()
+        verified=[x for x in evaluated.values() if x and not x["needs_review"]]
 
-    # If no vision key is configured, nothing is labeled verified. Scores are capped by verifier.
-    final=(verified+review)
+    review=[x for x in evaluated.values() if x and x["needs_review"]]
+    final=verified+review
     unique=[]; urls=set()
     for item in sorted(final,key=lambda x:x["score"],reverse=True):
         if item["url"] not in urls:
             unique.append(item);urls.add(item["url"])
-        if len(unique)>=5:break
+        if len(unique)>=5:
+            break
     if rejection_logger:
-        for item in rejected:
+        for item in rejected_by_url.values():
             rejection_logger(item)
     status="verified" if any(not x["needs_review"] for x in unique) else ("needs_review" if unique else "no_reliable_photo")
     return {
         "clean_name":product["clean_name"],"brand":product["brand"],
         "normalization":normalized,"images":unique,"status":status,
-        "rejected_count":len(rejected),"rejection_reasons":query_errors,
+        "rejected_count":len(rejected_by_url),"rejection_reasons":query_errors,
     }
