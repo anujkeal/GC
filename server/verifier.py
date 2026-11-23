@@ -162,8 +162,8 @@ def verify_candidate(product:dict,candidate:dict,seen_hashes:list[str]|None=None
     vision=_vision_check(product.get("clean_name",""),image_bytes) if run_vision else None
     vision_yes=bool(vision and str(vision.get("answer","")).lower()=="yes")
     if vision_yes:
-        score+=15
-        reasons.append("+15 vision model confirms exact product appearance")
+        score+=20
+        reasons.append("+20 vision model confirms exact product appearance")
     elif vision and str(vision.get("answer","")).lower()=="no":
         score-=40
         reasons.append("-40 vision model rejects visual product identity")
