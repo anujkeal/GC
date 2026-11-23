@@ -65,6 +65,7 @@ fun CatalogueScreen(db: GcDatabase) {
         scope.launch {
             var done = 0
             var withPhotos = 0
+            var needsReview = 0
             var errors = 0
             var firstError = ""
             status = "Finding product photos: 0 / " + items.size
@@ -74,14 +75,16 @@ fun CatalogueScreen(db: GcDatabase) {
                         val candidates = withContext(Dispatchers.IO) {
                             ImageSearch().search(product.ean, product.articleCode, product.productName, product.brand)
                         }
-                        val urls = JSONArray().apply { candidates.forEach { put(it.url) } }.toString()
+                        val verified = candidates.filterNot { it.needsReview }
+                        if (candidates.any { it.needsReview }) needsReview++
+                        val urls = JSONArray().apply { verified.forEach { put(it.url) } }.toString()
                         db.products().update(
                             product.copy(
                                 imageUrls = urls,
-                                selectedImage = candidates.firstOrNull()?.url.orEmpty(),
-                                imageSources = candidates.joinToString("|") { it.source },
-                                imageConfidence = candidates.firstOrNull()?.confidence ?: "NONE",
-                                imageStatus = "DONE"
+                                selectedImage = verified.firstOrNull()?.url.orEmpty(),
+                                imageSources = verified.joinToString("|") { it.source },
+                                imageConfidence = verified.firstOrNull()?.confidence ?: if (candidates.isNotEmpty()) "NEEDS REVIEW" else "NONE",
+                                imageStatus = if (verified.isNotEmpty()) "DONE" else if (candidates.isNotEmpty()) "REVIEW" else "DONE"
                             )
                         )
                         if (candidates.isNotEmpty()) withPhotos++
@@ -98,7 +101,7 @@ fun CatalogueScreen(db: GcDatabase) {
                 } else if (withPhotos == 0) {
                     "No relevant product photos were found on the searched retailer websites. Try again later or check the product description."
                 } else {
-                    "Photo search finished: " + withPhotos + " / " + items.size + " products have image results."
+                    "Photo search finished: " + withPhotos + " verified; " + needsReview + " need staff review."
                 }
             } finally {
                 isSearching = false
@@ -237,7 +240,7 @@ fun CatalogueScreen(db: GcDatabase) {
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(if (product.imageStatus == "ERROR") "PHOTO SEARCH FAILED · TAP TO RETRY" else if (product.imageStatus == "DONE") "NO PHOTOS FOUND" else "PHOTOS NOT SEARCHED")
+                                        Text(if (product.imageStatus == "ERROR") "PHOTO SEARCH FAILED · TAP TO RETRY" else if (product.imageStatus == "REVIEW") "PHOTOS NEED STAFF REVIEW" else if (product.imageStatus == "DONE") "NO VERIFIED PHOTOS FOUND" else "PHOTOS NOT SEARCHED")
                                     }
                                 }
                             }
