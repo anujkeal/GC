@@ -11,7 +11,9 @@ data class ImageCandidate(
     val url: String,
     val source: String,
     val title: String,
-    val confidence: String
+    val confidence: String,
+    val score: Int = 0,
+    val needsReview: Boolean = true
 )
 
 /** Calls GC's hosted DDGS service. The user never enters an API key or server URL. */
@@ -61,7 +63,9 @@ class ImageSearch {
                     url = image,
                     source = item.optString("url").ifBlank { item.optString("source") },
                     title = item.optString("title"),
-                    confidence = "DDGS PRODUCT MATCH"
+                    confidence = if (item.optBoolean("needs_review", true)) "NEEDS STAFF REVIEW" else "VISION VERIFIED",
+                    score = item.optInt("score", 0),
+                    needsReview = item.optBoolean("needs_review", true)
                 )
             }.distinctBy { it.url }.take(5)
         }
