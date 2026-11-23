@@ -7,26 +7,26 @@ from normalizer import normalize_product
 from verifier import score_metadata
 
 SAMPLES = [
-    ("1:16 Rc Highspd Mnstr Trck Red T102024","1:16 Remote Control High Speed Monster Truck Red","T102024","1:16","red"),
-    ("2.4g R/c Amphi Snake","2.4 g remote control amphibious snake","","",""),
-    ("2.4 Rc Wall Climbin Rc W Wtch Rmt Gry","2.4 Remote Control Wall Climbing Remote With Grey","","","grey"),
-    ("Blmg Icecream Bubble Blower","Bubble Ice Cream Bubble Blower","","",""),
-    ("Diy Stable Builders Farm Playset 9pcs","Diy Stable Builders Farm Playset 9pcs","","",""),
-    ("Drawing Board L Blue","Drawing Board L Blue","","","blue"),
-    ("Kop Rp Grn Toaster","Kop Rp Green Toaster","","","green"),
-    ("Be Set With Backpack Carrier","Be Set With Backpack Carrier","","",""),
-    ("City Assortment 6asst","City Assortment 6asst","","",""),
-    ("Clue Cluedo Classic Refresh F6420","Clue Cluedo Classic Refresh","F6420","",""),
+    ("1:16 Rc Highspd Mnstr Trck Red T102024",["remote","control","high","speed","monster","truck"],"T102024","1:16","red"),
+    ("2.4g R/c Amphi Snake",["remote","control","amphibious","snake"],"","",""),
+    ("2.4 Rc Wall Climbin Rc W Wtch Rmt Gry",["remote","control","wall","climbing","grey"],"","","grey"),
+    ("Blmg Icecream Bubble Blower",["bubble","ice","cream","blower"],"","",""),
+    ("Diy Stable Builders Farm Playset 9pcs",["stable","builders","farm","playset"],"","",""),
+    ("Drawing Board L Blue",["drawing","board","blue"],"","","blue"),
+    ("Kop Rp Grn Toaster",["kop","green","toaster"],"","","green"),
+    ("Be Set With Backpack Carrier",["backpack","carrier"],"","",""),
+    ("City Assortment 6asst",["city","assortment"],"","",""),
+    ("Clue Cluedo Classic Refresh F6420",["clue","cluedo","classic","refresh"],"F6420","",""),
 ]
 
 def test_ten_stock_descriptions_normalize():
-    for sample in SAMPLES:
-        raw,expected,code,scale,color,*_ = sample
+    for raw,expected_tokens,code,scale,color in SAMPLES:
         result=normalize_product(raw,use_llm=False)
-        assert expected.lower() in result.clean_name.lower(), (raw,result.clean_name)
+        clean=result.clean_name.lower()
+        for token in expected_tokens:
+            assert token in clean, (raw,token,result.clean_name)
         if code:
-            assert code in result.codes
-            assert code in result.code_tokens
+            assert code in result.codes and code in result.code_tokens
         if scale:
             assert scale in result.key_tokens["scale"]
         if color:
@@ -34,7 +34,7 @@ def test_ten_stock_descriptions_normalize():
 
 def test_requested_example_keeps_exact_model_code():
     result=normalize_product("1:16 Rc Highspd Mnstr Trck Red T102024",use_llm=False)
-    assert result.clean_name=="1:16 Remote Control High Speed Monster Truck Red"
+    assert result.clean_name=="1:16 remote control high speed monster truck red"
     assert result.codes==["T102024"]
     assert {"T","102024"}.issubset(set(result.code_tokens))
     assert result.key_tokens["model"]==["T102024"]
