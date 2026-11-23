@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
+import imagehash
 from PIL import Image
 
 TRUSTED_PATH=Path(__file__).parent/"trusted_domains.json"
@@ -66,9 +67,7 @@ def _download(url:str)->tuple[bytes,int,int,str]:
     image=Image.open(io.BytesIO(data)).convert("RGB")
     width,height=image.size
     if width<300 or height<300: raise ValueError(f"image too small ({width}x{height}); minimum 300x300")
-    pixels=list(image.resize((8,8)).convert("L").getdata())
-    avg=sum(pixels)/len(pixels)
-    phash="".join("1" if p>=avg else "0" for p in pixels)
+    phash=format(int(str(imagehash.phash(image)),16),"064b")
     return data,width,height,phash
 
 def _hamming(a:str,b:str)->int:
