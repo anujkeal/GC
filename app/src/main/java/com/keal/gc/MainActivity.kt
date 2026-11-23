@@ -48,38 +48,47 @@ fun CatalogueScreen(db: GcDatabase) {
     val products by db.products().observeAll().collectAsState(initial = emptyList())
     var query by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
+    var isImporting by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Product?>(null) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            status = "Reading CSV…"
-            (context as ComponentActivity).lifecycleScope.launch {
-                try {
-                    val csv = withContext(Dispatchers.IO) {
-                        context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                            ?: error("Cannot read file")
+            if (!isImporting) {
+                isImporting = true
+                status = "Opening CSV…"
+                (context as ComponentActivity).lifecycleScope.launch {
+                    try {
+                        val csv = withContext(Dispatchers.IO) {
+                            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                                ?: error("Android could not open this file. Save it as .csv and try again.")
+                        }
+                        require(csv.isNotBlank()) { "The selected file is empty." }
+                        status = "Checking CSV columns…"
+                        val parsed = withContext(Dispatchers.Default) { CsvReader.products(csv) }
+                        require(parsed.isNotEmpty()) { "No product rows were found in this CSV." }
+                        val importId = db.imports().insert(
+                            ImportRecord(fileName = uri.lastPathSegment ?: "catalogue.csv", rowCount = parsed.size)
+                        )
+                        withContext(Dispatchers.IO) {
+                            db.products().insertAll(parsed.map { p ->
+                                Product(
+                                    importId = importId,
+                                    originalDescription = p.original,
+                                    productName = p.name,
+                                    brand = p.brand,
+                                    ean = p.ean,
+                                    articleCode = p.article,
+                                    mrp = p.mrp,
+                                    quantity = p.quantity
+                                )
+                            })
+                        }
+                        status = "Successfully imported ${parsed.size} products."
+                    } catch (e: Exception) {
+                        status = "Import failed: ${e.message ?: "Unknown error"}"
+                    } finally {
+                        isImporting = false
                     }
-                    val parsed = withContext(Dispatchers.Default) { CsvReader.products(csv) }
-                    val importId = db.imports().insert(
-                        ImportRecord(fileName = uri.lastPathSegment ?: "catalogue.csv", rowCount = parsed.size)
-                    )
-                    withContext(Dispatchers.IO) {
-                        db.products().insertAll(parsed.map { p ->
-                            Product(
-                                importId = importId,
-                                originalDescription = p.original,
-                                productName = p.name,
-                                brand = p.brand,
-                                ean = p.ean,
-                                articleCode = p.article,
-                                mrp = p.mrp,
-                                quantity = p.quantity
-                            )
-                        })
-                    }
-                    status = "Imported ${parsed.size} products"
-                } catch (e: Exception) {
-                    status = e.message ?: "Import failed"
                 }
             }
         }
@@ -99,9 +108,9 @@ fun CatalogueScreen(db: GcDatabase) {
                     }
                 },
                 actions = {
-                    TextButton(onClick = { picker.launch(arrayOf("text/*", "text/csv", "application/vnd.ms-excel")) }) {
+                    TextButton(enabled = !isImporting, onClick = { picker.launch(arrayOf("*/*")) }) {
                         Icon(Icons.Default.Add, contentDescription = null)
-                        Text("Import CSV")
+                        Text(if (isImporting) "Importing…" else "Import CSV")
                     }
                 }
             )
@@ -124,8 +133,20 @@ fun CatalogueScreen(db: GcDatabase) {
                 Text("${filtered.size} products", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (status.isNotBlank()) {
-                Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(vertical = 8.dp))
+                Surface(
+                    color = if (status.startsWith("Import failed")) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        status,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (status.startsWith("Import failed")) MaterialTheme.colorScheme.onErrorContainer
+                        else MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
             if (filtered.isEmpty()) {
                 Column(
@@ -136,7 +157,7 @@ fun CatalogueScreen(db: GcDatabase) {
                     Text("Your catalogue starts here", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text("Import a stock CSV to find and organise product photos.",
                         modifier = Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = { picker.launch(arrayOf("text/*", "text/csv", "application/vnd.ms-excel")) },
+                    Button(onClick = { picker.launch(arrayOf("*/*")) },
                         modifier = Modifier.padding(top = 18.dp)) { Text("Choose CSV file") }
                 }
             } else {
