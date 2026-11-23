@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: gc-ddgs-api
+    name: gc-keal-ddgs-api
     runtime: docker
     dockerfilePath: ./server/Dockerfile
     dockerContext: .
