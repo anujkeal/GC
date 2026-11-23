@@ -109,7 +109,7 @@ def search_product(row:dict,base_url:str="",rejection_logger=None)->dict:
                 prelim.append((meta_score,candidate))
             else:
                 rejected_by_url[candidate["image"]]={"candidate":candidate,
-                    "reasons":meta_reasons+["rejected: metadata score below 50"]}
+                    "reasons":meta_reasons+["rejected: metadata score below 30"]}
         shortlist=sorted(prelim,key=lambda x:x[0],reverse=True)[:8]
         for _,candidate in shortlist:
             url=candidate["image"]
