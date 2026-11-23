@@ -15,8 +15,8 @@ android {
   targetSdk = 35
   versionCode = 1
   versionName = "1.0.0"
-  buildConfigField("String", "GOOGLE_CSE_KEY", "\"\${localProps.getProperty("GOOGLE_CSE_KEY", "")}\\"")
-  buildConfigField("String", "GOOGLE_CSE_ID", "\"\${localProps.getProperty("GOOGLE_CSE_ID", "")}\\"")
+    buildConfigField("String", "GOOGLE_CSE_KEY", "\"${localProps.getProperty("GOOGLE_CSE_KEY", "")}\"")
+    buildConfigField("String", "GOOGLE_CSE_ID", "\"${localProps.getProperty("GOOGLE_CSE_ID", "")}\"")
  }
  buildFeatures { compose = true; buildConfig = true }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
