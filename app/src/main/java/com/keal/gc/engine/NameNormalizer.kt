@@ -10,10 +10,9 @@ object NameNormalizer {
    when { key in inventoryNoise -> null; dictionary.containsKey(key)->dictionary.getValue(key); else->w.trim(',', '.', '-', '_') }
   }.filter(String::isNotBlank).toMutableList()
   val vehicleIndex=expanded.indexOf("Vehicle")
-  if(vehicleIndex>0 && vehicleIndex==expanded.lastIndex) {
-   val previous=expanded[vehicleIndex-1]
-   expanded[vehicleIndex-1]="Vehicle"
-   expanded[vehicleIndex]=previous
+  if(vehicleIndex in 0 until expanded.lastIndex) {
+   expanded.removeAt(vehicleIndex)
+   expanded.add("Vehicle")
   }
   val title=expanded.joinToString(" ") { w ->
    if(w.matches(Regex("[0-9]+(CM|MM|PCS|PC|IN)?",RegexOption.IGNORE_CASE))) w.lowercase()
