@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
  @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertAll(items:List<Product>)
  @Query("SELECT * FROM products WHERE importId = :importId ORDER BY id") suspend fun byImportId(importId:Long):List<Product>
  @Query("SELECT * FROM products WHERE imageStatus != 'DONE' ORDER BY id") suspend fun needingImages():List<Product>
+ @Query("SELECT * FROM products ORDER BY id") suspend fun allForImageRefresh():List<Product>
  @Update suspend fun update(item:Product)
  @Query("SELECT * FROM products WHERE ean != '' GROUP BY ean HAVING COUNT(*) > 1") suspend fun duplicateEans():List<Product>
  @Query("SELECT * FROM products WHERE articleCode != '' GROUP BY articleCode HAVING COUNT(*) > 1") suspend fun duplicateArticles():List<Product>
