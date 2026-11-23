@@ -94,6 +94,41 @@ def _vision_check(clean_name:str,image_bytes:bytes)->dict|None:
     except Exception as exc:
         return {"answer":"unknown","reason":f"vision check error: {type(exc).__name__}"}
 
+def score_metadata(product:dict,candidate:dict)->tuple[int,list[str],list[str]]:
+    """Score metadata evidence only; useful for deterministic offline unit tests."""
+    title=str(candidate.get("title") or "")
+    page=str(candidate.get("url") or candidate.get("source") or "")
+    alt=str(candidate.get("alt") or "")
+    text=f"{title} {alt} {page}".lower()
+    reasons=[]
+    score=0
+    ean=str(product.get("ean") or "").strip()
+    article=str(product.get("article") or "").strip()
+    if any(code and code.lower() in text for code in (ean,article)):
+        score+=40
+        reasons.append("+40 exact EAN/article found in title, alt text or source URL")
+    buckets=product.get("key_tokens") or {}
+    important=[]
+    for key in ("brand","model","color","scale","size"):
+        values=buckets.get(key,[])
+        if isinstance(values,str): values=[values]
+        important.extend(str(v).lower() for v in values if str(v).strip())
+    important=list(dict.fromkeys(important))
+    if not important:
+        important=[x.lower() for x in re.findall(r"[a-z0-9]+",product.get("clean_name","")) if len(x)>=3]
+    matched=[token for token in important if token in text]
+    points=round(30*len(set(matched))/max(1,len(set(important))))
+    score+=points
+    reasons.append(f"+{points} key-token coverage ({len(set(matched))}/{len(set(important))})")
+    if _trusted(page):
+        score+=15
+        reasons.append("+15 trusted retailer/manufacturer domain")
+    conflicts=_conflicts(product,title+" "+alt,page)
+    if conflicts:
+        score-=30
+        reasons.extend("-30 "+reason for reason in conflicts)
+    return max(0,min(100,score)),reasons,conflicts
+
 def verify_candidate(product:dict,candidate:dict,seen_hashes:list[str]|None=None,
                      run_vision:bool=True)->Verification:
     seen_hashes=seen_hashes if seen_hashes is not None else []
@@ -110,33 +145,7 @@ def verify_candidate(product:dict,candidate:dict,seen_hashes:list[str]|None=None
         return Verification(0,False,False,True,["rejected: perceptual duplicate (pHash distance <= 4)"],width=width,height=height,phash=phash)
     seen_hashes.append(phash)
 
-    reasons=[]
-    score=0
-    ean=str(product.get("ean") or "").strip()
-    article=str(product.get("article") or "").strip()
-    identifier_hit=any(code and code.lower() in searchable for code in (ean,article))
-    if identifier_hit:
-        score+=40
-        reasons.append("+40 exact EAN/article found in title, alt/source URL metadata")
-    buckets=product.get("key_tokens") or {}
-    important=[]
-    for key in ("brand","model","color","scale","size"):
-        values=buckets.get(key,[])
-        if isinstance(values,str): values=[values]
-        important.extend(str(v).lower() for v in values if str(v).strip())
-    if not important:
-        important=[x.lower() for x in re.findall(r"[a-z0-9]+",product.get("clean_name","")) if len(x)>=3]
-    matched=[token for token in important if token in searchable]
-    token_points=round(30*len(set(matched))/max(1,len(set(important))))
-    score+=token_points
-    reasons.append(f"+{token_points} key-token coverage ({len(set(matched))}/{len(set(important))})")
-    if _trusted(page):
-        score+=15
-        reasons.append("+15 trusted retailer/manufacturer domain")
-    conflicts=_conflicts(product,title,page)
-    if conflicts:
-        score-=30
-        reasons.extend("-30 "+reason for reason in conflicts)
+    score,reasons,conflicts=score_metadata(product,candidate)
     vision=_vision_check(product.get("clean_name",""),image_bytes) if run_vision else None
     vision_yes=bool(vision and str(vision.get("answer","")).lower()=="yes")
     if vision_yes:
