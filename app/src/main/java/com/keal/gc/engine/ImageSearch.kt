@@ -89,7 +89,7 @@ class ImageSearch {
 
             if (attempt < 2) {
                 try {
-                    Thread.sleep(1000L shl attempt)
+                    Thread.sleep(1000L * (1 shl attempt))
                 } catch (interrupted: InterruptedException) {
                     Thread.currentThread().interrupt()
                     throw IOException("Image search retry was interrupted.", interrupted)
