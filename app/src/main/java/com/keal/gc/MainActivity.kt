@@ -58,8 +58,6 @@ fun CatalogueScreen(db: GcDatabase) {
     var status by remember { mutableStateOf("") }
     var isImporting by remember { mutableStateOf(false) }
     var isSearching by remember { mutableStateOf(false) }
-    var showApiSettings by remember { mutableStateOf(false) }
-    var apiUrl by remember { mutableStateOf(context.getSharedPreferences("gc_settings", 0).getString("ddgs_api_url", "https://gc-ddgs-api.onrender.com") ?: "") }
 
     fun searchPhotos(items: List<Product>) {
         if (isSearching || items.isEmpty()) return
@@ -74,7 +72,7 @@ fun CatalogueScreen(db: GcDatabase) {
                 for (product in items) {
                     try {
                         val candidates = withContext(Dispatchers.IO) {
-                            ImageSearch(context).search(product.ean, product.articleCode, product.productName, product.brand)
+                            ImageSearch().search(product.ean, product.articleCode, product.productName, product.brand)
                         }
                         val urls = JSONArray().apply { candidates.forEach { put(it.url) } }.toString()
                         db.products().update(
@@ -150,41 +148,6 @@ fun CatalogueScreen(db: GcDatabase) {
         }
     }
 
-    if (showApiSettings) {
-        AlertDialog(
-            onDismissRequest = { showApiSettings = false },
-            title = { Text("DDGS image search") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Enter the HTTPS address of the GC DDGS image service. No API key is required.")
-                    OutlinedTextField(
-                        value = apiUrl,
-                        onValueChange = { apiUrl = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        label = { Text("DDGS server URL") },
-                        placeholder = { Text("https://your-service.onrender.com") }
-                    )
-                    Text("Default: https://gc-ddgs-api.onrender.com", style = MaterialTheme.typography.bodySmall)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val clean = apiUrl.trim().trimEnd('/')
-                    if (clean.startsWith("https://")) {
-                        context.getSharedPreferences("gc_settings", 0).edit().putString("ddgs_api_url", clean).apply()
-                        apiUrl = clean
-                        showApiSettings = false
-                        status = "DDGS server address saved."
-                    } else {
-                        status = "Please enter a valid HTTPS server URL."
-                    }
-                }) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { showApiSettings = false }) { Text("Cancel") } }
-        )
-    }
-
     val filtered = products.filter { p ->
         listOf(p.productName, p.ean, p.articleCode, p.brand).any { it.contains(query, ignoreCase = true) }
     }
@@ -199,7 +162,6 @@ fun CatalogueScreen(db: GcDatabase) {
                     }
                 },
                 actions = {
-                    TextButton(onClick = { showApiSettings = true }) { Text("API settings") }
                     TextButton(enabled = !isImporting, onClick = { picker.launch(arrayOf("*/*")) }) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Text(if (isImporting) "Importing…" else "Import CSV")
